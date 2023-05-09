@@ -1,6 +1,7 @@
 import { NextPage } from 'next'
-import WalletContextProvider from '../components/WalletContextProvider'
-import { Navbar } from '../components/Navbar'
+import WalletContextProvider from '../components/wallet_context/WalletContextProvider'
+import { Navbar } from '../components/navbar/Navbar'
+import StakingScreen from '../components/stake/StakeScreen'
 import Head from 'next/head'
 
 const Home: NextPage = () => {
@@ -14,7 +15,8 @@ const Home: NextPage = () => {
       </Head>
       <WalletContextProvider>
         <Navbar />
-        <div>
+        <div className="pt-5">
+          <StakingScreen />
         </div>
       </WalletContextProvider >
     </div>

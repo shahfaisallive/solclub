@@ -1,8 +1,11 @@
 import React, { FC, useState } from 'react'
 
-const StakedTokens: FC = () => {
-    const [stakedTokens, setStakedTokens] = useState([1, 2, 3, 4])
+interface StakedTokensProps {
+    stakedTokens: string[]
+}
 
+const StakedTokens= ({stakedTokens}: StakedTokensProps) => {
+    const [unstakeIndex, setUnstakeIndex] = useState(null)
 
     const renderTokens = () => {
         return stakedTokens.map((token, index) => (
@@ -23,7 +26,7 @@ const StakedTokens: FC = () => {
         <div className='container mt-5'>
             <div className="row justify-content-between">
                 <p className="heading1">Staked Keys</p>
-                <p className="text1 mt-2">Total Staked: 4</p>
+                <p className="text1 mt-2">Total Staked: {stakedTokens.length}</p>
             </div>
             <div className="row">
                 {renderTokens()}

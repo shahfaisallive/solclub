@@ -1,8 +1,11 @@
 import React, { FC, useState } from 'react'
 
-const MyTokens: FC = () => {
-    const [walletTokens, setWalletTokens] = useState([1, 2, 3, 4, 5, 6, 7, 8])
+interface MyTokensProps {
+    walletTokens: string[]
+}
 
+const MyTokens = ({ walletTokens }: MyTokensProps) => {
+    const [stakeIndex, setStakeIndex] = useState(null)
 
     const renderTokens = () => {
         return walletTokens.map((token, index) => (
@@ -22,7 +25,7 @@ const MyTokens: FC = () => {
         <div className='container'>
             <div className="row justify-content-between">
                 <p className="heading1">My Keys</p>
-                <p className="text1 mt-2">Total Keys: 8</p>
+                <p className="text1 mt-2">Total Keys: {walletTokens.length}</p>
             </div>
             <div className="row">
                 {renderTokens()}

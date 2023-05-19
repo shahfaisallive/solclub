@@ -1,12 +1,14 @@
+import dotenv from "dotenv"
+dotenv.config({ path: './.env' })
+
 import express from "express"
 import cors from 'cors'
-import dotenv from "dotenv"
 import mongoose from 'mongoose'
 
-dotenv.config({ path: './env' })
 
 // IMPORTING ROUTES
 import stakingRoutes from './routes/stakingRoutes.js'
+import tokenRoutes from './routes/tokenRoutes.js'
 
 const app = express()
 app.use(express.json())
@@ -23,6 +25,7 @@ app.use(cors({
 }));
 
 // Using the routes
+app.use('/api/token', tokenRoutes)
 app.use('/api/stake', stakingRoutes)
 
 // Default Route
@@ -30,7 +33,7 @@ app.use('/', (req, res) => res.send('Welcome to Solclub Staking..! If you feel m
 
 
 // MONGODB CONNECTION
-mongoose.connect("mongodb://127.0.0.1:27017")
+mongoose.connect("mongodb://127.0.0.1:27017/solclub")
     .then(() => {
         console.log('Staking Server connected to MongoDB successfully');
     }).catch(err => {

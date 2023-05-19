@@ -2,18 +2,20 @@
   "name": "staking_server",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "index.mjs",
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon index.js"
+    "start": "nodemon index.mjs"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@metaplex-foundation/js": "^0.19.3",
     "@solana/spl-token": "^0.3.7",
     "@solana/web3.js": "^1.62.1",
     "axios": "^1.4.0",
+    "bs58": "^5.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",

@@ -1,8 +1,9 @@
 import express from "express"
-import { getAllTokens } from "../controllers/stakingControllers.js"
+import { getTokenAccount, stakeController } from "../controllers/stakingControllers.js"
 const router = express.Router()
 
-router.get('/all-tokens', getAllTokens)
+router.get('/token-account/:mintId', getTokenAccount)
+router.post('/stake-new', stakeController)
 
 
 export default router

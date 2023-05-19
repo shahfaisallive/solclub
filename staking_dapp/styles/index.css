@@ -22,7 +22,8 @@ body {
     background-color: #402E24;
     font-size: 14px;
     border-radius: 0px !important;
-    border-radius: 10px;
+    border-radius: 10px !important;
+    height: 40px !important;
     width: 100%;
 }
 .button1:hover{
@@ -44,6 +45,8 @@ body {
 .card{
     border: none !important;
     border-radius: 20px !important;
+    padding: 10px !important;
+    background-color: #b6a399 !important;
 }
 .card-body{
     padding: 10px 0px 0px 0px !important;
@@ -51,4 +54,5 @@ body {
 }
 .my-token-img{
     width: 100%;
+    border-radius: 10px !important;
 }

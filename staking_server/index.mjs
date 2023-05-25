@@ -26,7 +26,7 @@ app.use(cors({
 
 // Using the routes
 app.use('/api/token', tokenRoutes)
-app.use('/api/stake', stakingRoutes)
+app.use('/api/staking', stakingRoutes)
 
 // Default Route
 app.use('/', (req, res) => res.send('Welcome to Solclub Staking..! If you feel misdirected, kindly recheck your path!'))

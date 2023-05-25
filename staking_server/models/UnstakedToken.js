@@ -5,8 +5,8 @@ const UnstakedToken = mongoose.Schema({
         type: String,
         required: true
     },
-    tokenUri: {
-        type: String,
+    unstakedAt: {
+        type: Number,
         required: true
     }
 }, { timestamps: true })

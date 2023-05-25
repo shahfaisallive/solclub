@@ -28,10 +28,6 @@ const StakedToken = mongoose.Schema({
     hostTokenAccount: {
         type: String,
         required: true
-    },
-    tokenUri: {
-        type: String,
-        required: true
     }
 }, { timestamps: true })
 

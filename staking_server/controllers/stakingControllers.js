@@ -1,4 +1,4 @@
-import { getOrCreateAssociatedTokenAccount } from '@solana/spl-token';
+import { getOrCreateAssociatedTokenAccount, transfer } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import { connection, hostAddress, signer } from '../middlewares/web3Provider.js';
 import StakedTokenModel from '../models/StakedToken.js';
@@ -59,6 +59,7 @@ export const stakeController = async (req, res) => {
     const { mintId, txHash, stakeDuration, ownerAddress, ownerTokenAccount, hostTokenAccount } = req.body
     console.log(req.body);
     const stakedToken = await StakedTokenModel.findOne({ txHash: txHash, mintId: mintId })
+    const unstakedToken = await UnstakedTokenModel.findOne({ mintId: mintId })
 
     if (stakedToken) {
         res.send({
@@ -67,42 +68,53 @@ export const stakeController = async (req, res) => {
             stakedToken
         })
     } else {
-        try {
-            let parsedTx = await connection.getParsedTransaction(txHash, 'confirmed')
+        const transactAndSave = async () => {
+            try {
+                let parsedTx = await connection.getParsedTransaction(txHash, "confirmed")
+                console.log("tx obj: ", parsedTx);
+                if (parsedTx) {
+                    if (parsedTx.transaction.message.instructions[0].parsed.type == "transfer") {
 
-            if (parsedTx.transaction.message.instructions[0].parsed.type == "transfer") {
+                        let newStake = await StakedTokenModel.create({
+                            mintId,
+                            txHash,
+                            owner: parsedTx.transaction.message.instructions[0].parsed.info.authority,
+                            stakedAt: parsedTx.blockTime,
+                            stakeDuration,
+                            ownerTokenAccount: parsedTx.transaction.message.instructions[0].parsed.info.source,
+                            hostTokenAccount: parsedTx.transaction.message.instructions[0].parsed.info.destination,
+                        })
 
-                let newStake = await StakedTokenModel.create({
-                    mintId,
-                    txHash,
-                    owner: parsedTx.transaction.message.instructions[0].parsed.info.authority,
-                    stakedAt: parsedTx.blockTime,
-                    stakeDuration,
-                    ownerTokenAccount: parsedTx.transaction.message.instructions[0].parsed.info.destination,
-                    hostTokenAccount: parsedTx.transaction.message.instructions[0].parsed.info.source,
-                })
+                        newStake.save()
+                        if (unstakedToken) {
+                            unstakedToken.deleteOne()
+                        }
 
-                newStake.save()
-
-                console.log(`${mintId} Staked Successfully`);
-                res.send({
-                    status: true,
-                    msg: "Token staked successfully",
-                    stakedToken: newStake
-                })
-            } else {
+                        console.log(`${mintId} Staked Successfully`);
+                        res.send({
+                            status: true,
+                            msg: "Token staked successfully",
+                            stakedToken: newStake
+                        })
+                    } else {
+                        res.send({
+                            status: false,
+                            msg: "The transaction is not a transfer transaction"
+                        })
+                    }
+                } else {
+                    transactAndSave()
+                }
+            } catch (error) {
+                console.log(error);
                 res.send({
                     status: false,
-                    msg: "The transaction is not a transfer transaction"
+                    msg: "Unknown issue occurred",
+                    error
                 })
             }
-        } catch (error) {
-            console.log(error);
-            res.send({
-                status: false,
-                error
-            })
         }
+        transactAndSave()
     }
 
 }
@@ -126,8 +138,8 @@ export const unstakeController = async (req, res) => {
         console.log(timeStamp);
         if (timeStamp > (stakedToken.stakedAt + stakedToken.stakeDuration)) {
 
-            const toTokenAccount = stakedToken.ownerTokenAccount
-            const fromTokenAccount = stakedToken.hostTokenAccount
+            const toTokenAccount = new PublicKey(stakedToken.ownerTokenAccount)
+            const fromTokenAccount = new PublicKey(stakedToken.hostTokenAccount)
 
             let signature
             try {
@@ -139,9 +151,11 @@ export const unstakeController = async (req, res) => {
                     hostAddress,
                     1
                 );
+                console.log(signature);
             } catch (error) {
+                console.log(error);
                 signature = null
-                console.log("transfer transaction failed");
+                console.log("unstake transaction failed");
             }
             if (signature) {
                 try {
@@ -153,9 +167,11 @@ export const unstakeController = async (req, res) => {
                     })
 
                     unstakedToken.save()
+                    stakedToken.deleteOne()
                     res.send({
                         status: true,
-                        msg: "Token unstaked successfuly"
+                        msg: "Token unstaked successfuly",
+                        signature
                     })
                 } catch (error) {
                     res.send({
@@ -163,6 +179,11 @@ export const unstakeController = async (req, res) => {
                         msg: "Failed to unstake token"
                     })
                 }
+            } else {
+                res.send({
+                    status: false,
+                    msg: "Unstake transaction got failed"
+                })
             }
         } else {
             res.send({

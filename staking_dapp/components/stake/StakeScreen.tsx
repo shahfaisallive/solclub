@@ -138,67 +138,65 @@ const StakeScreen: FC = () => {
         const toTokenAccount = await axiosInstance.get(`/staking/token-account/${stakeTokenAddress.toBase58()}`)
         console.log("hostTokenAccount: ", toTokenAccount.data.tokenAccount);
 
-        const transaction = new Transaction().add(
-            createTransferInstruction(
-                fromTokenAccount.address,
-                new PublicKey(toTokenAccount.data.tokenAccount),
-                userWallet,
-                1,
-                [],
-                TOKEN_PROGRAM_ID
+        let txHash
+
+        try {
+            const transaction = new Transaction().add(
+                createTransferInstruction(
+                    fromTokenAccount.address,
+                    new PublicKey(toTokenAccount.data.tokenAccount),
+                    userWallet,
+                    1,
+                    [],
+                    TOKEN_PROGRAM_ID
+                )
             )
-        )
 
-        const latestBlockHash = await connection.getLatestBlockhash();
-        transaction.recentBlockhash = latestBlockHash.blockhash;
-        transaction.feePayer = userWallet;
-        const signed = await signTransaction(transaction);
-        const txHash = await connection.sendRawTransaction(signed.serialize());
-        console.log("signature: ", txHash);
+            const latestBlockHash = await connection.getLatestBlockhash();
+            transaction.recentBlockhash = latestBlockHash.blockhash;
+            transaction.feePayer = userWallet;
+            const signed = await signTransaction(transaction);
+            txHash = await connection.sendRawTransaction(signed.serialize());
+            console.log("signature: ", txHash);
 
-        const stakeObj = {
-            mintId: stakeTokenAddress,
-            txHash,
-            stakeDuration: stakeDuration,
-            ownerAddress: address,
-            ownerTokenAccount: fromTokenAccount.address.toString(),
-            hostTokenAccount: toTokenAccount.data.tokenAccount
+        } catch (error) {
+            console.log(error);
         }
-        const stakeRequest = await axiosInstance.post('/staking/stake', stakeObj, {
+        if (txHash) {
+            const stakeObj = {
+                mintId: stakeTokenAddress,
+                txHash,
+                stakeDuration: 30, //TODO: change it to stakeduration
+                ownerAddress: address,
+                ownerTokenAccount: fromTokenAccount.address.toString(),
+                hostTokenAccount: toTokenAccount.data.tokenAccount
+            }
+            const stakeRequest = await axiosInstance.post('/staking/stake', stakeObj, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+
+            console.log(stakeRequest);
+        } else {
+            console.log("transaction failed");
+        }
+
+    }
+
+    const unstakeHandler = async (unstakeIndex) => {
+        // const userWallet = new PublicKey(publicKey)
+        const unstakeTokenAddress = new PublicKey(stakedTokensIDs[unstakeIndex])
+
+        const unstakeObj = {
+            mintId: unstakeTokenAddress
+        }
+        const unstakeRequest = await axiosInstance.post('/staking/unstake', unstakeObj, {
             headers: {
                 'Content-Type': 'application/json'
             }
         })
-
-        console.log(stakeRequest);
-    }
-
-    const unstakeHandler = async (unstakeIndex) => {
-        const userWallet = new PublicKey(publicKey)
-        const unstakeTokenAddress = new PublicKey(stakedTokensIDs[unstakeIndex])
-
-        const toTokenAccount = await getOrCreateAssociatedTokenAccount(
-            connection,
-            address,
-            unstakeTokenAddress,
-            userWallet,
-        );
-        const fromTokenAccount = await getOrCreateAssociatedTokenAccount(
-            connection,
-            address,
-            unstakeTokenAddress,
-            stakingWallet,
-        );
-
-        const signature = await transfer(
-            connection,
-            stakerSigner,
-            fromTokenAccount.address,
-            toTokenAccount.address,
-            stakingWallet,
-            1
-        );
-        console.log(signature)
+        console.log(unstakeRequest);
     }
 
 

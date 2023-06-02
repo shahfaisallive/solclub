@@ -1,7 +1,8 @@
 import TokenModel from "../models/Token.js";
+import StakedToken from "../models/StakedToken.js";
 import { PublicKey } from '@solana/web3.js';
 import { } from '@solana/spl-token';
-import { Metaplex, walletAdapterIdentity } from "@metaplex-foundation/js"
+import { Metaplex } from "@metaplex-foundation/js"
 import { connection } from '../middlewares/web3Provider.js';
 import { mintList } from '../data/Hashlist.js'
 
@@ -51,4 +52,55 @@ export const fetchFromSolana = async (req, res) => {
 export const getAllTokens = async (req, res) => {
     console.log("getting all tokens...")
 
+    try {
+        const tokens = await TokenModel.find()
+
+        res.send({
+            status: true,
+            tokens
+        })
+    } catch (error) {
+        console.log(erorr);
+        res.send({
+            status: false,
+            msg: "Failed to fetch tokens"
+        })
+    }
+
+}
+
+// Get all tokens staked by an address
+export const getMyStakedTokens = async (req, res) => {
+    console.log("getting my staked tokens: ", req.params.address);
+    const address = req.params.address
+    try {
+        // const stakedTokens = await StakedToken.find({ owner: address })
+        const stakedTokens = await StakedToken.aggregate([
+            {
+              $match: { owner: address }
+            },
+            {
+              $lookup: {
+                from: "testtokens",//TODO: change it to tokens
+                localField: "mintId",
+                foreignField: "mintId",
+                as: "tokenData"
+              }
+            },
+            {
+              $unwind: "$tokenData"
+            }
+          ])
+
+        res.send({
+            status: true,
+            stakedTokens
+        })
+    } catch (error) {
+        console.log(error);
+        res.send({
+            status: false,
+            msg: "Failed to fetch staked tokens"
+        })
+    }
 }

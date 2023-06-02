@@ -8,6 +8,10 @@ const UnstakedToken = mongoose.Schema({
     unstakedAt: {
         type: Number,
         required: true
+    },
+    rewardClaimed: {
+        type: Boolean,
+        required: true
     }
 }, { timestamps: true })
 

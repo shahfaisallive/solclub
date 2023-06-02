@@ -1,5 +1,6 @@
 import { getOrCreateAssociatedTokenAccount, transfer } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
+import { claimReward, getTokenAccount } from '../middlewares/utils.js';
 import { connection, hostAddress, signer } from '../middlewares/web3Provider.js';
 import StakedTokenModel from '../models/StakedToken.js';
 import UnstakedTokenModel from '../models/UnstakedToken.js';
@@ -27,17 +28,12 @@ export const getTxDetails = async (req, res) => {
 
 
 // get token account for host wallet
-export const getTokenAccount = async (req, res) => {
+export const getHostTokenAccount = async (req, res) => {
     console.log("getting token account in host for  :", req.params.mintId);
-    const tokenAddress = new PublicKey(req.params.mintId)
+    const tokenAddress = req.params.mintId
     console.log(tokenAddress);
     try {
-        const tokenAccount = await getOrCreateAssociatedTokenAccount(
-            connection,
-            signer,
-            tokenAddress,
-            hostAddress,
-        );
+        const tokenAccount = await getTokenAccount(tokenAddress, process.env.STAKING_HOST)
 
         res.send({
             status: true,
@@ -56,7 +52,7 @@ export const getTokenAccount = async (req, res) => {
 // Get create stak in the collection
 export const stakeController = async (req, res) => {
     console.log("stake controller called")
-    const { mintId, txHash, stakeDuration, ownerAddress, ownerTokenAccount, hostTokenAccount } = req.body
+    const { mintId, txHash, stakeDuration } = req.body
     console.log(req.body);
     const stakedToken = await StakedTokenModel.findOne({ txHash: txHash, mintId: mintId })
     const unstakedToken = await UnstakedTokenModel.findOne({ mintId: mintId })
@@ -80,7 +76,7 @@ export const stakeController = async (req, res) => {
                             txHash,
                             owner: parsedTx.transaction.message.instructions[0].parsed.info.authority,
                             stakedAt: parsedTx.blockTime,
-                            stakeDuration,
+                            stakeDuration: stakeDuration/3600, //TODO: remove this temp formula
                             ownerTokenAccount: parsedTx.transaction.message.instructions[0].parsed.info.source,
                             hostTokenAccount: parsedTx.transaction.message.instructions[0].parsed.info.destination,
                         })
@@ -134,10 +130,11 @@ export const unstakeController = async (req, res) => {
             msg: "This token has not been staked",
         })
     } else {
+        console.log(stakedToken);
         const timeStamp = Math.floor(new Date().getTime() / 1000);
         console.log(timeStamp);
-        if (timeStamp > (stakedToken.stakedAt + stakedToken.stakeDuration)) {
 
+        if (timeStamp > (stakedToken.stakedAt + stakedToken.stakeDuration)) {
             const toTokenAccount = new PublicKey(stakedToken.ownerTokenAccount)
             const fromTokenAccount = new PublicKey(stakedToken.hostTokenAccount)
 
@@ -159,11 +156,14 @@ export const unstakeController = async (req, res) => {
             }
             if (signature) {
                 try {
+                    const rewardSignature = await claimReward(stakedToken)
+
                     let parsedTx = await connection.getParsedTransaction(signature, 'confirmed')
 
                     let unstakedToken = await UnstakedTokenModel.create({
                         mintId,
-                        unstakedAt: parsedTx.blockTime
+                        unstakedAt: parsedTx.blockTime,
+                        rewardClaimed: rewardSignature ? true : false
                     })
 
                     unstakedToken.save()
@@ -171,7 +171,8 @@ export const unstakeController = async (req, res) => {
                     res.send({
                         status: true,
                         msg: "Token unstaked successfuly",
-                        signature
+                        signature,
+                        rewardSignature
                     })
                 } catch (error) {
                     res.send({

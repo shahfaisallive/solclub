@@ -62,4 +62,6 @@ body {
 }
 .form-check-label{
     margin-left: 20px;
+    margin-right: 15px;
+    color: #000000;
 }

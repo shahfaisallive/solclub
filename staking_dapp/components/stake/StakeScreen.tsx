@@ -11,7 +11,7 @@ import axios from 'axios'
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 
 const StakeScreen: FC = () => {
-    const { publicKey, signTransaction } = useWallet();
+    const { publicKey, signTransaction, signMessage } = useWallet();
     // const { connection } = useConnection();
     const connection = new Connection(
         // "https://solana-mainnet.g.alchemy.com/v2/Dsu3oYYI0gI4R4D9LCNPQimGXXOmb6k5"
@@ -28,11 +28,8 @@ const StakeScreen: FC = () => {
 
     // Staking Wallets and signers
     const stakingHost = "241AWvZbFCRmmVH3wT4SqdZtC4TVJ7FvCViwxYcUg3JT" //TODO: secure it
-    const signerKey = "3kqj5gWhfbcto69KNkKVRZHX9kqFb4r5MW56JwnavGdWPczqLPzpLrU6UKapNYjpBB8D8XM5gvD5JsfvqfsRj6Rq" //TODO: secure it
 
     const stakingWallet = new PublicKey(stakingHost);
-    const signer = Keypair.fromSecretKey(bs58.decode(signerKey));
-    const stakerSigner = Keypair.fromSecretKey(bs58.decode(signerKey));
 
     // Fetching staked/unstaked token infos on screen render
     const fetchTokens = async () => {
@@ -83,7 +80,7 @@ const StakeScreen: FC = () => {
     }
 
     // Get tokens metadata 
-    const getTokensMetadata = async (tokens) => {
+    const getTokensMetadata = async (tokens, walletAddress) => {
         const { walletTokens, stakedTokens } = tokens
 
         let walletTokensMetadata = []
@@ -105,22 +102,39 @@ const StakeScreen: FC = () => {
         setWalletTokens(walletTokensMetadata)
 
         // Get staked tokens metadata
-        for (let i = 0; i < stakedTokens.length; i++) {
-            try {
-                let mintPubkey = new PublicKey(stakedTokens[i])
-                let tokenMetaPubkey = await Metadata.getPDA(mintPubkey)
-                const tokenmeta = await Metadata.load(connection, tokenMetaPubkey);
-                const jsonMetadata = await axios.get(tokenmeta.data.data.uri)
-                // console.log(jsonMetadata.data);
-                stakedTokensMetadata.push(jsonMetadata.data)
-            } catch (error) {
-                console.error(`FAILED!!! Couldn't fetch token metadata for ${stakedTokens[i]}`)
-            }
+        // for (let i = 0; i < stakedTokens.length; i++) {
+        //     try {
+        //         let mintPubkey = new PublicKey(stakedTokens[i])
+        //         let tokenMetaPubkey = await Metadata.getPDA(mintPubkey)
+        //         const tokenmeta = await Metadata.load(connection, tokenMetaPubkey);
+        //         const jsonMetadata = await axios.get(tokenmeta.data.data.uri)
+        //         // console.log(jsonMetadata.data);
+        //         stakedTokensMetadata.push(jsonMetadata.data)
+        //     } catch (error) {
+        //         console.error(`FAILED!!! Couldn't fetch token metadata for ${stakedTokens[i]}`)
+        //     }
+        // }
+        // setStakedTokens(stakedTokensMetadata)
+        const stakedTokensData = await axiosInstance.get(`/token/staked/${walletAddress}`)
+        console.log(stakedTokensData.data);
+        if (stakedTokensData.data.stakedTokens) {
+            setStakedTokens(stakedTokensData.data.stakedTokens)
         }
-        setStakedTokens(stakedTokensMetadata)
+
         setLoading(false)
 
     }
+
+    // AUTH IMPLEMENTATION
+    const signAuthMessage = async (message) => {
+        try {
+            const messageUint8Array = new TextEncoder().encode(message);
+            const signatureBytes = await signMessage(messageUint8Array)
+            return signatureBytes
+        } catch (error) {
+            console.error('Error fetching message:', error);
+        }
+    };
 
     // STAKING UNSTAKING FUNCTIONS
     const stakeHandler = async (stakeIndex, stakeDuration) => {
@@ -166,7 +180,7 @@ const StakeScreen: FC = () => {
             const stakeObj = {
                 mintId: stakeTokenAddress,
                 txHash,
-                stakeDuration: 30, //TODO: change it to stakeduration
+                stakeDuration,
                 ownerAddress: address,
                 ownerTokenAccount: fromTokenAccount.address.toString(),
                 hostTokenAccount: toTokenAccount.data.tokenAccount
@@ -185,18 +199,28 @@ const StakeScreen: FC = () => {
     }
 
     const unstakeHandler = async (unstakeIndex) => {
-        // const userWallet = new PublicKey(publicKey)
-        const unstakeTokenAddress = new PublicKey(stakedTokensIDs[unstakeIndex])
+        const authMsgResponse = await axiosInstance.get('/auth/message')
+        const authMsg = authMsgResponse.data.message
+        console.log("authMsg: ", authMsg);
+        const signatureUint8Array = await signAuthMessage(authMsg)
+        if (signatureUint8Array) {
+            const unstakeTokenAddress = new PublicKey(stakedTokensIDs[unstakeIndex])
 
-        const unstakeObj = {
-            mintId: unstakeTokenAddress
-        }
-        const unstakeRequest = await axiosInstance.post('/staking/unstake', unstakeObj, {
-            headers: {
-                'Content-Type': 'application/json'
+            const unstakeObj = {
+                mintId: unstakeTokenAddress,
+                authMsg,
+                signatureUint8Array,
+                walletAddress: address
             }
-        })
-        console.log(unstakeRequest);
+            const unstakeRequest = await axiosInstance.post('/staking/unstake', unstakeObj, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            console.log(unstakeRequest);
+        } else {
+            console.log("Unable to sign the message");
+        }
     }
 
 
@@ -205,12 +229,18 @@ const StakeScreen: FC = () => {
         if (publicKey) {
             setAddress(publicKey.toBase58())
             fetchTokens().then(tokens => {
-                getTokensMetadata(tokens)
+                getTokensMetadata(tokens, publicKey.toBase58())
             })
         } else {
             setLoading(false)
         }
     }, [publicKey])
+
+    // useEffect(() => {
+    //     if(publicKey){
+    //         signAuthMessage()
+    //     }
+    // }, [publicKey])
 
     return (
         <div className='container'>

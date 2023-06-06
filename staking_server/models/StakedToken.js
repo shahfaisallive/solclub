@@ -21,6 +21,10 @@ const StakedToken = mongoose.Schema({
         type: Number,
         required: true
     },
+    rewardAmount: {
+        type: Number,
+        required: true
+    },
     ownerTokenAccount: {
         type: String,
         required: true

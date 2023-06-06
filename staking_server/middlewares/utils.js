@@ -22,7 +22,7 @@ export const getTokenAccount = async (_tokenAddress, _walletAddress) => {
 
 
 export const claimReward = async (stakedToken) => {
-    const { mintId, txHash, owner, stakeDuration } = stakedToken
+    const { mintId, txHash, owner, stakeDuration, rewardAmount } = stakedToken
     const ownerTokenAccountForNFT = await getTokenAccount(mintId, owner)
 
     // console.log(ownerTokenAccountForNFT);
@@ -30,8 +30,8 @@ export const claimReward = async (stakedToken) => {
 
     if (txHash == signatures[0].signature) {
         console.log("signatures matched, valid claim...");
-        const stakeDurationInDays = Math.floor(stakeDuration / 60) //TODO: 86400 secs in 1 day
-        const rewardAmount = stakeDurationInDays * process.env.REWARD_RATE_DAY
+        // const stakeDurationInDays = Math.floor(stakeDuration / 60) //TODO: 86400 secs in 1 day
+        // const rewardAmount = stakeDurationInDays * process.env.REWARD_RATE_DAY
         console.log(rewardAmount);
 
         const hostRewardTokenAccount = new PublicKey(process.env.REWARD_TOKEN_HOST_ACCOUNT)
@@ -60,3 +60,15 @@ export const claimReward = async (stakedToken) => {
     }
 
 }
+
+
+export const hexToUint8Array = (hexString) => {
+    const hex = hexString.toString().replace(/^0x/, '');
+    const bytes = [];
+    
+    for (let i = 0; i < hex.length; i += 2) {
+      bytes.push(parseInt(hex.substr(i, 2), 16));
+    }
+    
+    return new Uint8Array(bytes);
+  };

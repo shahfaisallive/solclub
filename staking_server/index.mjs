@@ -7,6 +7,7 @@ import mongoose from 'mongoose'
 
 
 // IMPORTING ROUTES
+import authRoutes from './routes/authRoutes.js'
 import stakingRoutes from './routes/stakingRoutes.js'
 import tokenRoutes from './routes/tokenRoutes.js'
 
@@ -25,6 +26,7 @@ app.use(cors({
 }));
 
 // Using the routes
+app.use('/api/auth', authRoutes)
 app.use('/api/token', tokenRoutes)
 app.use('/api/staking', stakingRoutes)
 

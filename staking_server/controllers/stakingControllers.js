@@ -71,12 +71,15 @@ export const stakeController = async (req, res) => {
                 if (parsedTx) {
                     if (parsedTx.transaction.message.instructions[0].parsed.type == "transfer") {
 
+                        const rewardAmount = (stakeDuration/86400)*process.env.REWARD_RATE_DAY
+
                         let newStake = await StakedTokenModel.create({
                             mintId,
                             txHash,
                             owner: parsedTx.transaction.message.instructions[0].parsed.info.authority,
                             stakedAt: parsedTx.blockTime,
                             stakeDuration: stakeDuration/3600, //TODO: remove this temp formula
+                            rewardAmount,
                             ownerTokenAccount: parsedTx.transaction.message.instructions[0].parsed.info.source,
                             hostTokenAccount: parsedTx.transaction.message.instructions[0].parsed.info.destination,
                         })

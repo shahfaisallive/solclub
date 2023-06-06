@@ -60,15 +60,3 @@ export const claimReward = async (stakedToken) => {
     }
 
 }
-
-
-export const hexToUint8Array = (hexString) => {
-    const hex = hexString.toString().replace(/^0x/, '');
-    const bytes = [];
-    
-    for (let i = 0; i < hex.length; i += 2) {
-      bytes.push(parseInt(hex.substr(i, 2), 16));
-    }
-    
-    return new Uint8Array(bytes);
-  };

@@ -4,11 +4,12 @@ export const getMessage = async (req, res) => {
     console.log("getting message");
 
     const message = crypto.randomBytes(32).toString('hex')
-
+    const timestamp = Date.now();
+    const messageWithDate = `${message}/${timestamp}`
     if (message) {
         res.send({
             status: true,
-            message
+            message: messageWithDate
         })
     } else {
         res.send({

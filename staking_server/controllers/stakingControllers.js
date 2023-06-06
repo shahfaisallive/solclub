@@ -122,15 +122,15 @@ export const stakeController = async (req, res) => {
 // Controllet to handle unstaking NFT
 export const unstakeController = async (req, res) => {
     console.log("unstake Controller called");
-    const { mintId } = req.body
+    const { mintId, walletAddress } = req.body
 
     const stakedToken = await StakedTokenModel.findOne({ mintId: mintId })
 
     // TODO: create another utility function to check if the token is present in the host wallet as well or not to ensure transparency
-    if (!stakedToken) {
+    if (!stakedToken || stakedToken.owner != walletAddress) {
         res.send({
             status: false,
-            msg: "This token has not been staked",
+            msg: "Something is wrong, either token is not staked or you are not the reak stakeholder",
         })
     } else {
         console.log(stakedToken);

@@ -4,6 +4,9 @@ import { claimReward, getTokenAccount } from '../middlewares/utils.js';
 import { connection, hostAddress, signer } from '../middlewares/web3Provider.js';
 import StakedTokenModel from '../models/StakedToken.js';
 import UnstakedTokenModel from '../models/UnstakedToken.js';
+import { Metaplex, keypairIdentity } from "@metaplex-foundation/js"
+
+const metaplex = Metaplex.make(connection)
 
 // get transaction details by hash
 export const getTxDetails = async (req, res) => {
@@ -31,7 +34,7 @@ export const getTxDetails = async (req, res) => {
 export const getHostTokenAccount = async (req, res) => {
     console.log("getting token account in host for  :", req.params.mintId);
     const tokenAddress = req.params.mintId
-    console.log(tokenAddress);
+    // console.log(tokenAddress);
     try {
         const tokenAccount = await getTokenAccount(tokenAddress, process.env.STAKING_HOST)
 
@@ -67,21 +70,20 @@ export const stakeController = async (req, res) => {
         const transactAndSave = async () => {
             try {
                 let parsedTx = await connection.getParsedTransaction(txHash, "confirmed")
-                console.log("tx obj: ", parsedTx);
+                // console.log("tx obj: ", parsedTx);
                 if (parsedTx) {
-                    if (parsedTx.transaction.message.instructions[0].parsed.type == "transfer") {
-
-                        const rewardAmount = (stakeDuration/86400)*process.env.REWARD_RATE_DAY
+                    if (parsedTx.meta.innerInstructions[0].instructions[1].program == "spl-token" && parsedTx.meta.innerInstructions[0].instructions[1].parsed.type == "transfer") {
+                        const rewardAmount = (stakeDuration / 86400) * process.env.REWARD_RATE_DAY
 
                         let newStake = await StakedTokenModel.create({
                             mintId,
                             txHash,
-                            owner: parsedTx.transaction.message.instructions[0].parsed.info.authority,
+                            owner: parsedTx.meta.innerInstructions[0].instructions[1].parsed.info.signers[0],
                             stakedAt: parsedTx.blockTime,
-                            stakeDuration: stakeDuration/3600, //TODO: remove this temp formula
+                            stakeDuration: stakeDuration / 3600, //TODO: remove this temp formula
                             rewardAmount,
-                            ownerTokenAccount: parsedTx.transaction.message.instructions[0].parsed.info.source,
-                            hostTokenAccount: parsedTx.transaction.message.instructions[0].parsed.info.destination,
+                            ownerTokenAccount: parsedTx.meta.innerInstructions[0].instructions[1].parsed.info.source,
+                            hostTokenAccount: parsedTx.meta.innerInstructions[0].instructions[1].parsed.info.destination,
                         })
 
                         newStake.save()
@@ -123,11 +125,13 @@ export const stakeController = async (req, res) => {
 export const unstakeController = async (req, res) => {
     console.log("unstake Controller called");
     const { mintId, walletAddress } = req.body
+    // console.log(req.body);
 
     const stakedToken = await StakedTokenModel.findOne({ mintId: mintId })
-
+    console.log(stakedToken);
     // TODO: create another utility function to check if the token is present in the host wallet as well or not to ensure transparency
     if (!stakedToken || stakedToken.owner != walletAddress) {
+        console.log("Something is wrong, either token is not staked or you are not the reak stakeholder");
         res.send({
             status: false,
             msg: "Something is wrong, either token is not staked or you are not the reak stakeholder",
@@ -143,15 +147,31 @@ export const unstakeController = async (req, res) => {
 
             let signature
             try {
-                signature = await transfer(
-                    connection,
-                    signer,
-                    fromTokenAccount,
-                    toTokenAccount,
-                    hostAddress,
-                    1
-                );
-                console.log(signature);
+                const mintAddress = new PublicKey(mintId)
+                const feePayer = {
+                    publicKey: hostAddress,
+                    signTransaction: async (tx) => tx,
+                    signMessage: async (msg) => msg,
+                    signAllTransactions: async (txs) => txs,
+                };
+
+                metaplex.use(keypairIdentity(signer))
+                const nftToUnstake = await metaplex.nfts().findByMint({ mintAddress });
+                // console.log(nftToUnstake);
+                const unstakeTxObj = metaplex.nfts().builders().transfer({
+                    nftOrSft: nftToUnstake,
+                    fromOwner: hostAddress,
+                    toOwner: new PublicKey(walletAddress),
+                    authority: feePayer,
+                });
+                const blockhash = await connection.getLatestBlockhash();
+
+                const unstakeTx = unstakeTxObj.toTransaction(blockhash)
+                unstakeTx.feePayer = hostAddress
+                unstakeTx.sign(signer)
+                console.log("unstakeTx", unstakeTx);
+                signature = await connection.sendRawTransaction(unstakeTx.serialize())
+                console.log("unstakeHash: ", txHash)
             } catch (error) {
                 console.log(error);
                 signature = null

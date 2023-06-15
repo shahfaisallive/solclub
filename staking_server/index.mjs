@@ -1,6 +1,7 @@
 import dotenv from "dotenv"
 dotenv.config({ path: './.env' })
 
+
 import express from "express"
 import cors from 'cors'
 import mongoose from 'mongoose'
@@ -35,9 +36,9 @@ app.use('/', (req, res) => res.send('Welcome to Solclub Staking..! If you feel m
 
 
 // MONGODB CONNECTION
-mongoose.connect("mongodb://127.0.0.1:27017/solclub")
+mongoose.connect(process.env.DB_PATH)
     .then(() => {
-        console.log('Staking Server connected to MongoDB successfully');
+        console.log('Staking Server connected to MongoDB successfully: ' + process.env.DB_PATH);
     }).catch(err => {
         console.log('ERRR! Connection to MongoDB Failed')
         console.log(err)

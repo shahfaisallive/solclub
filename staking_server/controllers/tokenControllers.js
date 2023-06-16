@@ -5,6 +5,7 @@ import { } from '@solana/spl-token';
 import { Metaplex } from "@metaplex-foundation/js"
 import { connection } from '../middlewares/web3Provider.js';
 import { mintList } from '../data/Hashlist.js'
+import axios from "axios";
 
 const metaplex = Metaplex.make(connection)
 
@@ -70,28 +71,41 @@ export const getAllTokens = async (req, res) => {
 }
 
 // Get all tokens staked by an address
+export const getMyUnstakedTokens = async (req, res) => {
+    console.log("getting my unstaked tokens: ", req.params.address);
+    const address = req.params.address
+    let unstakedTokens
+    try {
+        unstakedTokens = await (await metaplex.nfts().findAllByOwner({ owner: new PublicKey(address) })).filter(t => t.symbol == 'SOCL')
+        for (let i = 0; i < unstakedTokens.length; i++) {
+            try {
+                const jsonMetadata = await axios.get(unstakedTokens[i].uri)
+                unstakedTokens[i].json = jsonMetadata.data
+            } catch (error) {
+                console.log(error);
+            }
+        }
+        res.send({
+            status: true,
+            unstakedTokens
+        })
+    } catch (error) {
+        console.log(error);
+        res.send({
+            status: false,
+            msg: "Failed to fetch unstaked tokens"
+        })
+    }
+}
+
+// Get all tokens staked by an address
 export const getMyStakedTokens = async (req, res) => {
+    // TODO: might be a good idea to fetch token ids from tx logs for host account or just verify from there
     console.log("getting my staked tokens: ", req.params.address);
     const address = req.params.address
     try {
-        // const stakedTokens = await StakedToken.find({ owner: address })
-        const stakedTokens = await StakedToken.aggregate([
-            {
-              $match: { owner: address }
-            },
-            {
-              $lookup: {
-                from: "testtokens",//TODO: change it to tokens
-                localField: "mintId",
-                foreignField: "mintId",
-                as: "tokenData"
-              }
-            },
-            {
-              $unwind: "$tokenData"
-            }
-          ])
-
+        const stakedTokens = await StakedToken.find({ owner: address })
+        console.log(stakedTokens.length);
         res.send({
             status: true,
             stakedTokens

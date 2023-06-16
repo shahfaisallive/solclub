@@ -35,8 +35,6 @@ const StakeScreen: FC = () => {
 
     // Fetching staked/unstaked token infos on screen render
     const fetchTokens = async () => {
-        // const publicKey = new PublicKey("DGWPjb3TT8NX5Y2FsWJ99nW2UMyCr45Sk8gAdwGFeiZs") //temp pubkey
-
         let walletTokens = []
         let stakedTokens = []
 
@@ -57,22 +55,17 @@ const StakeScreen: FC = () => {
         });
 
 
-        // // Staker wallet Tokens are fetched here
-        // const stakerWalletResponse = await connection.getTokenAccountsByOwner(
-        //     stakingWallet,
-        //     {
-        //         programId: TOKEN_PROGRAM_ID
-        //     }
-        // )
-        // // const newStakedTokens = []
-        // stakerWalletResponse.value.forEach((e) => {
-        //     const accountInfo = AccountLayout.decode(e.account.data);
-        //     const mint = new PublicKey(accountInfo.mint)
-        //     if (accountInfo.amount.toString() == "1") {
-        //         stakedTokens.push(mint.toBase58())
-        //         setStakedTokensIDs(mints => [...mints, mint.toBase58()])
-        //     }
-        // });
+        // Staker wallet Tokens are fetched here
+        const stakedTokensData = await axiosInstance.get(`/token/staked/${publicKey.toString()}`)
+        console.log(stakedTokensData.data);
+        if (stakedTokensData.data.stakedTokens) {
+            stakedTokensData.data.stakedTokens.forEach(t => {
+                console.log(t.mintId);
+                stakedTokens.push(t.mintId)
+                setStakedTokens(tokens => [...tokens, t])
+                setStakedTokensIDs(mints => [...mints, t.mintId])
+            })
+        }
 
         return {
             walletTokens,
@@ -86,7 +79,7 @@ const StakeScreen: FC = () => {
         const { walletTokens, stakedTokens } = tokens
 
         let walletTokensMetadata = []
-        // let stakedTokensMetadata = []
+        let stakedTokensMetadata = []
 
         // Get wallet tokens metadata
         for (let i = 0; i < walletTokens.length; i++) {
@@ -98,34 +91,28 @@ const StakeScreen: FC = () => {
                     walletTokensMetadata.push(tokenMeta.json)
                 }
             } catch (error) {
+                console.log(error);
                 console.error(`FAILED!!! Couldn't fetch token metadata for ${walletTokens[i]}`)
             }
         }
         setWalletTokens(walletTokensMetadata)
 
         // Get staked tokens metadata
-        // for (let i = 0; i < stakedTokens.length; i++) {
-        //     try {
-        //         let mintPubkey = new PublicKey(stakedTokens[i])
-        //         let tokenMetaPubkey = await Metadata.getPDA(mintPubkey)
-        //         const tokenmeta = await Metadata.load(connection, tokenMetaPubkey);
-        //         const jsonMetadata = await axios.get(tokenmeta.data.data.uri)
-        //         // console.log(jsonMetadata.data);
-        //         stakedTokensMetadata.push(jsonMetadata.data)
-        //     } catch (error) {
-        //         console.error(`FAILED!!! Couldn't fetch token metadata for ${stakedTokens[i]}`)
-        //     }
-        // }
-        // setStakedTokens(stakedTokensMetadata)
-        const stakedTokensData = await axiosInstance.get(`/token/staked/${walletAddress}`)
-        console.log(stakedTokensData.data);
-        if (stakedTokensData.data.stakedTokens) {
-            stakedTokensData.data.stakedTokens.forEach(t => {
-                setStakedTokensIDs(mints => [...mints, t.mintId])
-            })
-            setStakedTokens(stakedTokensData.data.stakedTokens)
+        for (let i = 0; i < stakedTokens.length; i++) {
+            try {
+                console.log("stake token address: ", stakedTokens[i]);
+                let mintPubkey = new PublicKey(stakedTokens[i])
+                let tokenMeta = await metaplex.nfts().findByMint({ mintAddress: mintPubkey })
+                console.log(tokenMeta);
+                let stakedTokenObj = stakedTokens[i]
+                stakedTokenObj.json = tokenMeta.json
+                stakedTokensMetadata.push(stakedTokenObj)
+            } catch (error) {
+                console.log(error);
+                console.error(`FAILED!!! Couldn't fetch token metadata for ${stakedTokens[i]}`)
+            }
         }
-
+        setStakedTokens(stakedTokensMetadata)
         setLoading(false)
 
     }

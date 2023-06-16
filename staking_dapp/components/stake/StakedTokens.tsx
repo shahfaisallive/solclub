@@ -61,6 +61,7 @@ const StakedTokens = ({ stakedTokens, unstakeHandler }: StakedTokensProps) => {
     }
 
     const getUnstakeDisabled = (stakedAt, duration) => {
+        console.log(stakedAt);
         const timeRemaining = (stakedAt + duration) - Math.floor((new Date().getTime()) / 1000)
         if (timeRemaining > 0) {
             return true
@@ -73,9 +74,9 @@ const StakedTokens = ({ stakedTokens, unstakeHandler }: StakedTokensProps) => {
         return stakedTokens.map((token, index) => (
             <div key={index} className="col-md-3">
                 <div className="card mb-4">
-                    <img className="my-token-img" src={token.tokenData.image} alt="solkey nft" />
+                    <img className="my-token-img" src={token.image} alt="solkey nft" />
                     <div className="card-body">
-                        <h5 className="heading2 text-center text-dark">{token.tokenData.name}</h5>
+                        <h5 className="heading2 text-center text-dark">{token.name}</h5>
                         <p className="text1 text-center text-dark">{timeRemaining(token.stakedAt, token.stakeDuration)}</p>
                         <p className="text1 text-center text-dark">Reward: {token.rewardAmount}</p>
                         <button className="btn button1 text-light" disabled={getUnstakeDisabled(token.stakedAt, token.stakeDuration)} onClick={() => unstakeSelectHandler(index)}>Unstake this Key</button>

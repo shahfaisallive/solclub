@@ -8,6 +8,25 @@ import { Metaplex, keypairIdentity } from "@metaplex-foundation/js"
 
 const metaplex = Metaplex.make(connection)
 
+// getting host address
+export const getHostAddress = async (req, res) => {
+    console.log("getting host address");
+    const hostAddress = process.env.STAKING_HOST
+    if (hostAddress) {
+        res.send({
+            status: true,
+            hostAddress,
+            msg: "Host address fetched successfully"
+        })
+    } else {
+        console.error(error);
+        res.send({
+            status: false,
+            msg: "Unable to get host address"
+        })
+    }
+}
+
 // get transaction details by hash
 export const getTxDetails = async (req, res) => {
     console.log("getting tx details");
@@ -80,7 +99,7 @@ export const stakeController = async (req, res) => {
                             txHash,
                             owner: parsedTx.meta.innerInstructions[0].instructions[1].parsed.info.signers[0],
                             stakedAt: parsedTx.blockTime,
-                            stakeDuration: stakeDuration / 3600, //TODO: remove this temp formula
+                            stakeDuration: stakeDuration,
                             rewardAmount,
                             ownerTokenAccount: parsedTx.meta.innerInstructions[0].instructions[1].parsed.info.source,
                             hostTokenAccount: parsedTx.meta.innerInstructions[0].instructions[1].parsed.info.destination,
@@ -131,19 +150,15 @@ export const unstakeController = async (req, res) => {
     console.log(stakedToken);
     // TODO: create another utility function to check if the token is present in the host wallet as well or not to ensure transparency
     if (!stakedToken || stakedToken.owner != walletAddress) {
-        console.log("Something is wrong, either token is not staked or you are not the reak stakeholder");
+        console.log("Something is wrong, either token is not staked or you are not the real stakeholder");
         res.send({
             status: false,
             msg: "Something is wrong, either token is not staked or you are not the reak stakeholder",
         })
     } else {
-        console.log(stakedToken);
         const timeStamp = Math.floor(new Date().getTime() / 1000);
-        console.log(timeStamp);
 
         if (timeStamp > (stakedToken.stakedAt + stakedToken.stakeDuration)) {
-            const toTokenAccount = new PublicKey(stakedToken.ownerTokenAccount)
-            const fromTokenAccount = new PublicKey(stakedToken.hostTokenAccount)
 
             let signature
             try {
@@ -169,9 +184,8 @@ export const unstakeController = async (req, res) => {
                 const unstakeTx = unstakeTxObj.toTransaction(blockhash)
                 unstakeTx.feePayer = hostAddress
                 unstakeTx.sign(signer)
-                console.log("unstakeTx", unstakeTx);
                 signature = await connection.sendRawTransaction(unstakeTx.serialize())
-                console.log("unstakeHash: ", txHash)
+                console.log("unstakeHash: ", signature)
             } catch (error) {
                 console.log(error);
                 signature = null

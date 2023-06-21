@@ -1,32 +1,44 @@
+import { PublicKey } from '@solana/web3.js';
 import React, { FC, useState } from 'react'
 
+interface Token {
+    json: {
+        image: string;
+    };
+    name: string;
+    address: PublicKey
+}
+
 interface MyTokensProps {
-    walletTokens: string[],
-    stakeHandler: (stakeIndex: number, stakeDuration: number) => Promise<void>;
+    walletTokens: Token[],
+    stakeHandler: (stakeTokenAddress: PublicKey, stakeDuration: number) => Promise<void>;
 }
 
 const MyTokens: FC<MyTokensProps> = ({ walletTokens, stakeHandler }) => {
-    const [stakeIndex, setStakeIndex] = useState<number | null>(null);
+    const [stakeTokenAddress, setStakeTokenAddress] = useState(null)
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [stakeDuration, setStakeDuration] = useState(0);
+    const [txLoader, setTxLoader] = useState(false);
 
-    const stakeSelectHandler = (index: number) => {
-        setStakeIndex(index);
+    const stakeSelectHandler = (address: PublicKey) => {
+        setStakeTokenAddress(address)
         setIsModalOpen(true);
     }
 
     const handleModalConfirm = () => {
-        if (stakeIndex !== null && stakeDuration !== 0) {
+        if (stakeTokenAddress !== null && stakeDuration !== 0) {
+            setTxLoader(true)
             const _stakeDuration = stakeDuration * 86400
-            stakeHandler(stakeIndex, _stakeDuration)
+            stakeHandler(stakeTokenAddress, _stakeDuration)
                 .then(() => {
                     setIsModalOpen(false);
-                    setStakeIndex(null);
+                    setStakeTokenAddress(null);
+                    setTxLoader(false)
                 })
                 .catch((error) => {
                     console.log('Stake Error:', error);
                     setIsModalOpen(false);
-                    setStakeIndex(null);
+                    setStakeTokenAddress(null);
                 });
         }
     };
@@ -35,10 +47,10 @@ const MyTokens: FC<MyTokensProps> = ({ walletTokens, stakeHandler }) => {
         return walletTokens.map((token, index) => (
             <div key={index} className="col-md-3">
                 <div className="card mb-4">
-                    <img className="my-token-img" src={token.image} alt="solkey nft" />
+                    <img className="my-token-img" src={token.json.image} alt="solkey nft" />
                     <div className="card-body">
                         <h5 className="heading2 text-center text-dark">{token.name}</h5>
-                        <button className="btn button1 text-light" onClick={() => stakeSelectHandler(index)}>Stake this Key</button>
+                        <button className="btn button1 text-light" onClick={() => stakeSelectHandler(token.address)}>Stake this Key</button>
                     </div>
                 </div>
             </div>
@@ -66,18 +78,20 @@ const MyTokens: FC<MyTokensProps> = ({ walletTokens, stakeHandler }) => {
                             </div>
                             <div className="modal-body flex">
                                 <p>Select the Stake duration</p>
-                                <input className="form-check-input" type="radio" name="inlineRadioOptions" id="d_option1" value={7} checked={stakeDuration === 7} onChange={() => setStakeDuration(7)}/>
+                                <input className="form-check-input" type="radio" name="inlineRadioOptions" id="d_option1" value={7} checked={stakeDuration === 7} onChange={() => setStakeDuration(7)} />
                                 <label className="form-check-label" htmlFor="d_option1">7 Days</label>
-                                <input className="form-check-input" type="radio" name="inlineRadioOptions" id="d_option2" value={14} checked={stakeDuration === 14} onChange={() => setStakeDuration(14)}/>
+                                <input className="form-check-input" type="radio" name="inlineRadioOptions" id="d_option2" value={14} checked={stakeDuration === 14} onChange={() => setStakeDuration(14)} />
                                 <label className="form-check-label" htmlFor="d_option2">14 Days</label>
-                                <input className="form-check-input" type="radio" name="inlineRadioOptions" id="d_option3" value={28} checked={stakeDuration === 28} onChange={() => setStakeDuration(28)}/>
+                                <input className="form-check-input" type="radio" name="inlineRadioOptions" id="d_option3" value={28} checked={stakeDuration === 28} onChange={() => setStakeDuration(28)} />
                                 <label className="form-check-label" htmlFor="d_option3">28 Days</label>
 
                             </div>
 
                             <div className="modal-footer">
                                 <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                                <button type="button" className="btn btn-primary" onClick={handleModalConfirm} disabled={!stakeDuration ? true : false}>Stake</button>
+                                <button type="button" className="btn btn-primary" onClick={handleModalConfirm} disabled={!stakeDuration ? true : false}>
+                                    {txLoader ? <div className="spinner-border spinner-border-sm text-light" role="status"></div> : 'Stake'}
+                                </button>
                             </div>
                         </div>
                     </div>

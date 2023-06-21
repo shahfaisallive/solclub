@@ -1,12 +1,10 @@
 import { AccountLayout, getOrCreateAssociatedTokenAccount, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Connection, PublicKey } from '@solana/web3.js';
-// import { Metadata } from "@metaplex-foundation/mpl-token-metadata";
 import React, { FC, useEffect, useState } from 'react'
 import MyTokens from './MyTokens'
 import StakedTokens from './StakedTokens'
 import axiosInstance from '../axios/axiosInstance.js'
-import axios from 'axios'
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { Metaplex, Signer, walletAdapterIdentity } from '@metaplex-foundation/js';
 
@@ -21,104 +19,55 @@ const StakeScreen: FC = () => {
 
     const [loading, setLoading] = useState(false)
     const [address, setAddress] = useState(null)
-    const [walletTokensIDs, setWalletTokensIDs] = useState([])
-    const [stakedTokensIDs, setStakedTokensIDs] = useState([])
+    const [stakingHostPubKey, setStakingHostPubKey] = useState(null)
     const [walletTokens, setWalletTokens] = useState([])
     const [stakedTokens, setStakedTokens] = useState([])
 
-
-    // Staking Wallets and signers
-    // const stakingHost = "241AWvZbFCRmmVH3wT4SqdZtC4TVJ7FvCViwxYcUg3JT" //TODO: secure it
-    const stakingHost = "XNtcFVQtdPQgCZH4EKK93G9mwhdk9rgnvgWoqhuc9Gw" //TODO: secure it main
-
-    const stakingWallet = new PublicKey(stakingHost);
-
     // Fetching staked/unstaked token infos on screen render
-    const fetchTokens = async () => {
-        let walletTokens = []
-        let stakedTokens = []
+    const fetchTokensAndAddresses = async () => {
+        const hostAddressData = await (await axiosInstance.get(`/staking/hostAddress`)).data
+        setStakingHostPubKey(new PublicKey(hostAddressData.hostAddress))
 
+        // Fetching user wallet tokens/unstaked Tokens
         const userWalletResponse = await connection.getTokenAccountsByOwner(
             publicKey,
             {
                 programId: TOKEN_PROGRAM_ID
             }
         )
-        userWalletResponse.value.forEach((e) => {
+        userWalletResponse.value.forEach(async (e) => {
             const accountInfo = AccountLayout.decode(e.account.data);
-            const mint = new PublicKey(accountInfo.mint)
-            // console.log(mint.toBase58());
+            const mintPubkey = new PublicKey(accountInfo.mint)
             if (accountInfo.amount.toString() == "1") {
-                walletTokens.push(mint.toBase58())
-                setWalletTokensIDs(mints => [...mints, mint.toBase58()])
+                let nftMetadata = await metaplex.nfts().findByMint({ mintAddress: mintPubkey })
+                console.log(nftMetadata);
+                if (nftMetadata.symbol == 'SOCL') {
+                    setWalletTokens(tokens => [...tokens, nftMetadata])
+                }
             }
         });
 
 
-        // Staker wallet Tokens are fetched here
+        // Fetching user staked Tokens
         const stakedTokensData = await axiosInstance.get(`/token/staked/${publicKey.toString()}`)
         console.log(stakedTokensData.data);
         if (stakedTokensData.data.stakedTokens) {
-            stakedTokensData.data.stakedTokens.forEach(t => {
-                console.log(t.mintId);
-                stakedTokens.push(t.mintId)
-                setStakedTokens(tokens => [...tokens, t])
-                setStakedTokensIDs(mints => [...mints, t.mintId])
+            stakedTokensData.data.stakedTokens.forEach(async (token) => {
+                let mintPubkey = new PublicKey(token.mintId)
+                let nftMetadata = await metaplex.nfts().findByMint({ mintAddress: mintPubkey })
+                let stakedTokenObj = token
+                stakedTokenObj.json = nftMetadata.json
+                console.log(stakedTokenObj);
+                setStakedTokens(tokens => [...tokens, stakedTokenObj])
             })
         }
-
-        return {
-            walletTokens,
-            stakedTokens
-        }
-
-    }
-
-    // Get tokens metadata 
-    const getTokensMetadata = async (tokens, walletAddress) => {
-        const { walletTokens, stakedTokens } = tokens
-
-        let walletTokensMetadata = []
-        let stakedTokensMetadata = []
-
-        // Get wallet tokens metadata
-        for (let i = 0; i < walletTokens.length; i++) {
-            try {
-                let mintPubkey = new PublicKey(walletTokens[i])
-                let tokenMeta = await metaplex.nfts().findByMint({ mintAddress: mintPubkey })
-                console.log(tokenMeta);
-                if (tokenMeta.symbol == 'SOCL') {
-                    walletTokensMetadata.push(tokenMeta.json)
-                }
-            } catch (error) {
-                console.log(error);
-                console.error(`FAILED!!! Couldn't fetch token metadata for ${walletTokens[i]}`)
-            }
-        }
-        setWalletTokens(walletTokensMetadata)
-
-        // Get staked tokens metadata
-        for (let i = 0; i < stakedTokens.length; i++) {
-            try {
-                console.log("stake token address: ", stakedTokens[i]);
-                let mintPubkey = new PublicKey(stakedTokens[i])
-                let tokenMeta = await metaplex.nfts().findByMint({ mintAddress: mintPubkey })
-                console.log(tokenMeta);
-                let stakedTokenObj = stakedTokens[i]
-                stakedTokenObj.json = tokenMeta.json
-                stakedTokensMetadata.push(stakedTokenObj)
-            } catch (error) {
-                console.log(error);
-                console.error(`FAILED!!! Couldn't fetch token metadata for ${stakedTokens[i]}`)
-            }
-        }
-        setStakedTokens(stakedTokensMetadata)
         setLoading(false)
 
     }
 
+
     // AUTH IMPLEMENTATION
-    const signAuthMessage = async (message) => {
+    const signAuthMessage = async (message: string) => {
         try {
             const messageUint8Array = new TextEncoder().encode(message);
             const signatureBytes = await signMessage(messageUint8Array)
@@ -129,10 +78,9 @@ const StakeScreen: FC = () => {
     };
 
     // STAKING UNSTAKING FUNCTIONS
-    const stakeHandler = async (stakeIndex, stakeDuration) => {
+    const stakeHandler = async (stakeTokenAddress: PublicKey, stakeDuration: Number) => {
         console.log("stake called...");
         const userWallet = new PublicKey(publicKey)
-        const stakeTokenAddress = new PublicKey(walletTokensIDs[stakeIndex])
 
         const fromTokenAccount = await getOrCreateAssociatedTokenAccount(
             connection,
@@ -165,7 +113,7 @@ const StakeScreen: FC = () => {
             const stakeTxObj = metaplex.nfts().builders().transfer({
                 nftOrSft: nftToStake,
                 fromOwner: userWallet,
-                toOwner: stakingWallet,
+                toOwner: stakingHostPubKey,
                 authority: feePayer,
             });
             const blockhash = await connection.getLatestBlockhash();
@@ -200,14 +148,12 @@ const StakeScreen: FC = () => {
 
     }
 
-    const unstakeHandler = async (unstakeIndex) => {
+    const unstakeHandler = async (unstakeTokenAddress: PublicKey) => {
         const authMsgResponse = await axiosInstance.get('/auth/message')
         const authMsg = authMsgResponse.data.message
         console.log("authMsg: ", authMsg);
         const signatureUint8Array = await signAuthMessage(authMsg)
-        console.log("unstake id: ", stakedTokensIDs[unstakeIndex]);
         if (signatureUint8Array) {
-            const unstakeTokenAddress = new PublicKey(stakedTokensIDs[unstakeIndex])
 
             const unstakeObj = {
                 mintId: unstakeTokenAddress,
@@ -231,9 +177,7 @@ const StakeScreen: FC = () => {
         setLoading(true)
         if (publicKey) {
             setAddress(publicKey.toBase58())
-            fetchTokens().then(tokens => {
-                getTokensMetadata(tokens, publicKey.toBase58())
-            })
+            fetchTokensAndAddresses()
         } else {
             setLoading(false)
         }

@@ -30,9 +30,6 @@ export const claimReward = async (stakedToken) => {
 
     if (txHash == signatures[0].signature) {
         console.log("signatures matched, valid claim...");
-        // const stakeDurationInDays = Math.floor(stakeDuration / 60) //TODO: 86400 secs in 1 day
-        // const rewardAmount = stakeDurationInDays * process.env.REWARD_RATE_DAY
-        console.log(rewardAmount);
 
         const hostRewardTokenAccount = new PublicKey(process.env.REWARD_TOKEN_HOST_ACCOUNT)
         const ownerRewardTokenAccount = await getTokenAccount(process.env.REWARD_TOKEN, owner)
@@ -47,7 +44,7 @@ export const claimReward = async (stakedToken) => {
                 hostAddress,
                 rewardAmount * Math.pow(10, process.env.REWARD_TOKEN_DECIMALS)
             );
-            console.log(transferSignature)
+            console.log(`${rewardAmount} tokens transferred to ${owner}. Hash: ${transferSignature}`)
             return transferSignature
         } catch (error) {
             console.log(error)

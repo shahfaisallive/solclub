@@ -1,30 +1,45 @@
+import { PublicKey } from '@solana/web3.js';
 import React, { FC, useState } from 'react'
 
+interface Token {
+    json: {
+        image: string;
+        name: string
+    };
+    rewardAmount: Number;
+    stakeDuration: Number;
+    stakedAt: Number;
+    mintId: String;
+}
+
 interface StakedTokensProps {
-    stakedTokens: string[],
-    unstakeHandler: (unstakeIndex: number) => Promise<void>;
+    stakedTokens: Token[],
+    unstakeHandler: (stakeTokenAddress: PublicKey) => Promise<void>;
 }
 
 const StakedTokens = ({ stakedTokens, unstakeHandler }: StakedTokensProps) => {
-    const [unstakeIndex, setUnstakeIndex] = useState<number | null>(null);
+    const [unstakeTokenAddress, setUnstakeTokenAddress] = useState(null)
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [txLoader, setTxLoader] = useState(false);
 
-    const unstakeSelectHandler = (index: number) => {
-        setUnstakeIndex(index);
+    const unstakeSelectHandler = (address: PublicKey) => {
+        setUnstakeTokenAddress(address);
         setIsModalOpen(true);
     }
 
     const handleModalConfirm = () => {
-        if (unstakeIndex !== null) {
-            unstakeHandler(unstakeIndex)
+        if (unstakeTokenAddress !== null) {
+            setTxLoader(true)
+            unstakeHandler(unstakeTokenAddress)
                 .then(() => {
                     setIsModalOpen(false);
-                    setUnstakeIndex(null);
+                    setUnstakeTokenAddress(null);
+                    setTxLoader(true)
                 })
                 .catch((error) => {
                     console.log('Stake Error:', error);
                     setIsModalOpen(false);
-                    setUnstakeIndex(null);
+                    setUnstakeTokenAddress(null);
                 });
         }
     };
@@ -34,7 +49,7 @@ const StakedTokens = ({ stakedTokens, unstakeHandler }: StakedTokensProps) => {
         const secondsInMinute = 60;
         const secondsInHour = 60 * secondsInMinute;
         const secondsInDay = 24 * secondsInHour;
-      
+
         const days = Math.floor(timeRemaining / secondsInDay);
         const hours = Math.floor((timeRemaining % secondsInDay) / secondsInHour);
         const minutes = Math.floor((timeRemaining % secondsInHour) / secondsInMinute);
@@ -74,12 +89,12 @@ const StakedTokens = ({ stakedTokens, unstakeHandler }: StakedTokensProps) => {
         return stakedTokens.map((token, index) => (
             <div key={index} className="col-md-3">
                 <div className="card mb-4">
-                    <img className="my-token-img" src={token.image} alt="solkey nft" />
+                    <img className="my-token-img" src={token.json.image} alt="solkey nft" />
                     <div className="card-body">
-                        <h5 className="heading2 text-center text-dark">{token.name}</h5>
+                        <h5 className="heading2 text-center text-dark">{token.json.name}</h5>
                         <p className="text1 text-center text-dark">{timeRemaining(token.stakedAt, token.stakeDuration)}</p>
                         <p className="text1 text-center text-dark">Reward: {token.rewardAmount}</p>
-                        <button className="btn button1 text-light" disabled={getUnstakeDisabled(token.stakedAt, token.stakeDuration)} onClick={() => unstakeSelectHandler(index)}>Unstake this Key</button>
+                        <button className="btn button1 text-light" disabled={getUnstakeDisabled(token.stakedAt, token.stakeDuration)} onClick={() => unstakeSelectHandler(new PublicKey(token.mintId))}>Unstake this Key</button>
                     </div>
                 </div>
             </div>
@@ -112,7 +127,9 @@ const StakedTokens = ({ stakedTokens, unstakeHandler }: StakedTokensProps) => {
 
                             <div className="modal-footer">
                                 <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                                <button type="button" className="btn btn-primary" onClick={handleModalConfirm}>Yes! Unstake Now</button>
+                                <button type="button" className="btn btn-primary" onClick={handleModalConfirm}>
+                                    {txLoader ? <div className="spinner-border spinner-border-sm text-light" role="status"></div> : 'Unstake'}
+                                </button>
                             </div>
                         </div>
                     </div>

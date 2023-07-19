@@ -1,7 +1,6 @@
 import React from 'react';
 import { FC } from 'react'
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
-import Image from 'next/image'
 
 export const Navbar: FC = () => {
     return (

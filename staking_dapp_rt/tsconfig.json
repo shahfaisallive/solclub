@@ -7,24 +7,20 @@
       "esnext"
     ],
     "allowJs": true,
-    "checkJs": false,
     "skipLibCheck": true,
-    "strict": false,
-    "forceConsistentCasingInFileNames": true,
-    "noEmit": true,
-    "incremental": true,
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
     "module": "esnext",
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve"
+    "noEmit": true,
+    "jsx": "react-jsx"
   },
   "include": [
-    "**/*.ts",
-    "**/*.tsx"
-, "pages/index.js"  ],
-  "exclude": [
-    "node_modules"
+    "src"
   ]
 }

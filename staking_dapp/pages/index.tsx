@@ -1,3 +1,4 @@
+import React from 'react';
 import { NextPage } from 'next'
 import WalletContextProvider from '../components/wallet_context/WalletContextProvider'
 import { Navbar } from '../components/navbar/Navbar'

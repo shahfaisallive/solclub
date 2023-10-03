@@ -12,8 +12,8 @@ const StakeScreen: FC = () => {
     const { publicKey, signTransaction, signMessage } = useWallet();
     const wallet = useWallet()
     const connection = new Connection(
-        "https://solana-mainnet.g.alchemy.com/v2/Dsu3oYYI0gI4R4D9LCNPQimGXXOmb6k5"
-        // "https://solana-devnet.g.alchemy.com/v2/QWm3ITJ7nSGPWrevn6EPYn4KE9I631G7"
+        // "https://solana-mainnet.g.alchemy.com/v2/Dsu3oYYI0gI4R4D9LCNPQimGXXOmb6k5"
+        "https://solana-devnet.g.alchemy.com/v2/QWm3ITJ7nSGPWrevn6EPYn4KE9I631G7"
     )
     const metaplex = Metaplex.make(connection)
 
